@@ -1,0 +1,10 @@
+# Credentials — never commit this
+config.js
+
+# OS clutter
+.DS_Store
+Thumbs.db
+
+# Editor clutter
+.vscode/
+.idea/
