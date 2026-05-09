@@ -10,5 +10,5 @@
 // ║    • SUPABASE_ANON → "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YXR6enJiYXBmdHp3dXhyY2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTg5NTksImV4cCI6MjA4OTc3NDk1OX0.qPUvwuA-bPhMm33QUT3VKE0H-Bv5zeBDSeSmqt4pCSU" key                    ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-const SUPABASE_URL  = 'https://YOUR_PROJECT_REF.supabase.co';
-const SUPABASE_ANON = 'YOUR_ANON_KEY';
+const SUPABASE_URL  = 'https://mtatzzrbapftzwuxrcko.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10YXR6enJiYXBmdHp3dXhyY2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTg5NTksImV4cCI6MjA4OTc3NDk1OX0.qPUvwuA-bPhMm33QUT3VKE0H-Bv5zeBDSeSmqt4pCSU';
