@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Updates & Alerts</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Credentials loaded from config.js (gitignored — never overwritten) -->
+  <script src="config.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:    #ffffff;
+      --bg-secondary:  #f7f6f3;
+      --text-primary:  #1a1a18;
+      --text-secondary:#5f5e5a;
+      --text-tertiary: #888780;
+      --text-info:     #185fa5;
+      --border-light:  rgba(0,0,0,0.10);
+      --border-mid:    rgba(0,0,0,0.18);
+      --radius-md:     8px;
+      --radius-lg:     12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary:    #1c1c1a;
+        --bg-secondary:  #252523;
+        --text-primary:  #e8e6df;
+        --text-secondary:#a8a69e;
+        --text-tertiary: #6e6c66;
+        --text-info:     #85b7eb;
+        --border-light:  rgba(255,255,255,0.08);
+        --border-mid:    rgba(255,255,255,0.14);
+      }
+    }
+
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: transparent;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .widget {
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    /* ── Summary strip ── */
+    .strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 0.5px solid var(--border-light);
+    }
+    .strip-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .strip-left i { font-size: 15px; }
+    .badge {
+      background: #e24b4a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 20px;
+      min-width: 20px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .badge.hidden { display: none; }
+    .btn-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: none;
+    }
+    .btn-text:hover { color: var(--text-primary); }
+
+    /* ── Filters ── */
+    .filters {
+      display: flex;
+      gap: 6px;
+      padding: 10px 16px;
+      border-bottom: 0.5px solid var(--border-light);
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 0.5px solid var(--border-mid);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn i { font-size: 12px; vertical-align: -1px; margin-right: 3px; }
+    .filter-btn.active {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-color: var(--border-mid);
+    }
+
+    /* ── Feed ── */
+    .feed { max-height: 440px; overflow-y: auto; }
+
+    .event-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 0.5px solid var(--border-light);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-row:hover { background: var(--bg-secondary); }
+    .event-row.unread { background: var(--bg-secondary); }
+    .event-row.unread .event-title { font-weight: 500; }
+
+    /* ── Icons ── */
+    .icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+      font-size: 15px;
+    }
+    .icon-wrap.incident    { background: #FCEBEB; color: #A32D2D; }
+    .icon-wrap.review      { background: #E1F5EE; color: #085041; }
+    .icon-wrap.agent       { background: #E6F1FB; color: #0C447C; }
+    .icon-wrap.risk        { background: #FAEEDA; color: #633806; }
+    .icon-wrap.information { background: #EEEDFE; color: #3C3489; }
+
+    @media (prefers-color-scheme: dark) {
+      .icon-wrap.incident    { background: #501313; color: #F09595; }
+      .icon-wrap.review      { background: #04342C; color: #9FE1CB; }
+      .icon-wrap.agent       { background: #042C53; color: #85B7EB; }
+      .icon-wrap.risk        { background: #412402; color: #FAC775; }
+      .icon-wrap.information { background: #26215C; color: #CECBF6; }
+    }
+
+    /* ── Event body ── */
+    .event-body { flex: 1; min-width: 0; }
+    .event-title {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.4;
+      margin-bottom: 3px;
+    }
+    .event-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      flex-wrap: wrap;
+    }
+    .event-meta i { font-size: 12px; }
+
+    /* ── Pills ── */
+    .pill { font-size: 11px; padding: 1px 7px; border-radius: 20px; font-weight: 500; }
+    .sev-high  { background: #FCEBEB; color: #A32D2D; }
+    .sev-med   { background: #FAEEDA; color: #633806; }
+    .sev-low   { background: #EAF3DE; color: #27500A; }
+    .risk-up   { background: #FCEBEB; color: #A32D2D; }
+    .risk-down { background: #EAF3DE; color: #27500A; }
+    @media (prefers-color-scheme: dark) {
+      .sev-high  { background: #501313; color: #F09595; }
+      .sev-med   { background: #412402; color: #FAC775; }
+      .sev-low   { background: #173404; color: #C0DD97; }
+      .risk-up   { background: #501313; color: #F09595; }
+      .risk-down { background: #173404; color: #C0DD97; }
+    }
+
+    .action-link {
+      font-size: 12px;
+      color: var(--text-info);
+      white-space: nowrap;
+      margin-left: auto;
+      flex-shrink: 0;
+      padding-left: 8px;
+      align-self: center;
+    }
+    .unread-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #e24b4a;
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+    .no-dot { width: 7px; flex-shrink: 0; }
+
+    .state-msg {
+      padding: 32px 16px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .expiry-note {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      padding: 5px 16px;
+      border-top: 0.5px solid var(--border-light);
+      background: var(--bg-secondary);
+      text-align: center;
+    }
+    .expiry-note i { font-size: 12px; vertical-align: -1px; margin-right: 4px; }
+
+    .footer {
+      padding: 8px 16px;
+      border-top: 0.5px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-note { font-size: 12px; color: var(--text-tertiary); }
+  </style>
+</head>
+<body>
+
+<div class="widget" role="region" aria-label="Updates and alerts feed">
+
+  <div class="strip">
+    <div class="strip-left">
+      <i class="ti ti-bell" aria-hidden="true"></i>
+      <span id="strip-summary">Loading…</span>
+      <span class="badge hidden" id="badge" aria-live="polite"></span>
+    </div>
+    <button class="btn-text" onclick="markAllRead()">Mark all read</button>
+  </div>
+
+  <div class="filters" role="group" aria-label="Filter by category">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('incident',this)">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>Incidents
+    </button>
+    <button class="filter-btn" onclick="setFilter('review',this)">
+      <i class="ti ti-star" aria-hidden="true"></i>Reviews
+    </button>
+    <button class="filter-btn" onclick="setFilter('agent',this)">
+      <i class="ti ti-user" aria-hidden="true"></i>Agents
+    </button>
+    <button class="filter-btn" onclick="setFilter('risk',this)">
+      <i class="ti ti-trending-up" aria-hidden="true"></i>Agent risk
+    </button>
+    <button class="filter-btn" onclick="setFilter('information',this)">
+      <i class="ti ti-bulb" aria-hidden="true"></i>Information
+    </button>
+  </div>
+
+  <div class="feed" id="feed" aria-live="polite">
+    <div class="state-msg">Loading updates…</div>
+  </div>
+
+  <div class="expiry-note" id="expiry-note">
+    <i class="ti ti-info-circle" aria-hidden="true"></i>
+    Unread items kept indefinitely &middot; Read items expire after 90 days
+  </div>
+
+  <div class="footer">
+    <span class="footer-note" id="footer-note">Showing all updates</span>
+    <a class="btn-text" href="https://agentbee.com" target="_blank" rel="noopener">
+      View full history <i class="ti ti-external-link" style="font-size:11px;vertical-align:-1px"></i>
+    </a>
+  </div>
+
+</div>
+
+<script>
+  const params         = new URLSearchParams(window.location.search);
+  const INSTITUTION_ID = params.get('institution_id') || null;
+  const MEMBER_ID      = params.get('member_id')      || null;
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  let allEvents    = [];
+  let readSet      = new Set();
+  let activeFilter = 'all';
+
+  const pillMap = {
+    'high':      { label: 'High severity',   cls: 'sev-high'  },
+    'med':       { label: 'Medium severity',  cls: 'sev-med'   },
+    'low':       { label: 'Low severity',     cls: 'sev-low'   },
+    'risk-up':   { label: 'Increased risk',   cls: 'risk-up'   },
+    'risk-down': { label: 'Risk reduced',     cls: 'risk-down' },
+  };
+
+  async function load() {
+    if (!INSTITUTION_ID) {
+      document.getElementById('feed').innerHTML =
+        '<div class="state-msg">No institution ID provided.</div>';
+      document.getElementById('strip-summary').textContent = 'Configuration error';
+      return;
+    }
+
+    const { data: events, error } = await db
+      .from('notification_events')
+      .select('*')
+      .eq('institution_id', INSTITUTION_ID)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      document.getElementById('feed').innerHTML =
+        '<div class="state-msg">Could not load updates.</div>';
+      return;
+    }
+
+    allEvents = events || [];
+
+    if (MEMBER_ID && allEvents.length > 0) {
+      const { data: reads } = await db
+        .from('notification_reads')
+        .select('event_id')
+        .eq('institution_id', INSTITUTION_ID)
+        .eq('member_id', MEMBER_ID)
+        .in('event_id', allEvents.map(e => e.id));
+
+      readSet = new Set((reads || []).map(r => r.event_id));
+    }
+
+    render();
+  }
+
+  async function markRead(eventId, actionUrl) {
+    if (!readSet.has(eventId)) {
+      readSet.add(eventId);
+      render();
+      if (MEMBER_ID && INSTITUTION_ID) {
+        await db.from('notification_reads').upsert({
+          institution_id: INSTITUTION_ID,
+          event_id:       eventId,
+          member_id:      MEMBER_ID,
+        }, { onConflict: 'institution_id,event_id,member_id' });
+      }
+    }
+    if (actionUrl) window.open(actionUrl, '_blank', 'noopener');
+  }
+
+  async function markAllRead() {
+    const unread = allEvents.filter(e => !readSet.has(e.id));
+    if (!unread.length) return;
+    unread.forEach(e => readSet.add(e.id));
+    render();
+    if (MEMBER_ID && INSTITUTION_ID) {
+      await db.from('notification_reads').upsert(
+        unread.map(e => ({
+          institution_id: INSTITUTION_ID,
+          event_id:       e.id,
+          member_id:      MEMBER_ID,
+        })),
+        { onConflict: 'institution_id,event_id,member_id' }
+      );
+    }
+  }
+
+  function setFilter(f, btn) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const labels = {
+      all:         'Showing all updates',
+      incident:    'Showing incidents only',
+      review:      'Showing reviews only',
+      agent:       'Showing agent additions and removals',
+      risk:        'Showing agent risk classification changes',
+      information: 'Showing information and resources',
+    };
+    document.getElementById('footer-note').textContent = labels[f] || '';
+    document.getElementById('expiry-note').style.display =
+      f === 'information' ? 'none' : 'block';
+    render();
+  }
+
+  function render() {
+    const filtered = activeFilter === 'all'
+      ? allEvents
+      : allEvents.filter(e => e.event_type === activeFilter);
+
+    const feed = document.getElementById('feed');
+
+    if (!filtered.length) {
+      feed.innerHTML = '<div class="state-msg">No updates in this category.</div>';
+      updateStrip();
+      return;
+    }
+
+    feed.innerHTML = filtered.map(e => {
+      const isRead = readSet.has(e.id);
+      const pill   = e.severity ? pillMap[e.severity] : null;
+      const when   = relativeTime(e.created_at);
+      const url    = e.action_url ? `'${e.action_url}'` : 'null';
+
+      return `<div
+          class="event-row${isRead ? '' : ' unread'}"
+          role="button" tabindex="0"
+          onclick="markRead('${e.id}',${url})"
+          onkeydown="if(event.key==='Enter')markRead('${e.id}',${url})"
+          aria-label="${e.title}${isRead ? '' : ' — unread'}"
+        >
+          <div class="icon-wrap ${e.event_type}" aria-hidden="true">
+            <i class="ti ${e.icon || 'ti-bell'}"></i>
+          </div>
+          <div class="event-body">
+            <div class="event-title">${e.title}</div>
+            <div class="event-meta">
+              <i class="ti ti-clock" aria-hidden="true"></i>
+              ${when}
+              ${pill ? `<span class="pill ${pill.cls}">${pill.label}</span>` : ''}
+            </div>
+          </div>
+          <span class="action-link" aria-hidden="true">
+            ${e.action_label || 'View'}
+            <i class="ti ti-chevron-right" style="font-size:12px;vertical-align:-1px"></i>
+          </span>
+          ${isRead
+            ? '<div class="no-dot"></div>'
+            : '<div class="unread-dot" aria-label="unread"></div>'}
+        </div>`;
+    }).join('');
+
+    updateStrip();
+  }
+
+  function updateStrip() {
+    const count  = allEvents.filter(e => !readSet.has(e.id)).length;
+    const badge  = document.getElementById('badge');
+    badge.textContent = count;
+    badge.classList.toggle('hidden', count === 0);
+    const newest  = allEvents[0];
+    const lastUpd = newest ? relativeTime(newest.created_at) : 'never';
+    document.getElementById('strip-summary').innerHTML = count === 0
+      ? `All caught up &middot; last updated ${lastUpd}`
+      : `${count} unread &middot; last updated ${lastUpd}`;
+  }
+
+  function relativeTime(ts) {
+    if (!ts) return '';
+    const diff  = Date.now() - new Date(ts).getTime();
+    const mins  = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days  = Math.floor(diff / 86400000);
+    if (mins  <  2) return 'Just now';
+    if (mins  < 60) return `${mins} minutes ago`;
+    if (hours <  2) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    if (days === 1) return 'Yesterday';
+    if (days  <  7) return `${days} days ago`;
+    if (days  < 14) return '1 week ago';
+    return `${Math.floor(days / 7)} weeks ago`;
+  }
+
+  load();
+</script>
+</body>
+</html>
