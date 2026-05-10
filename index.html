@@ -196,7 +196,6 @@
 
     .action-link {
       font-size: 12px;
-      font-weight: 600;
       color: var(--text-info);
       white-space: nowrap;
       margin-left: auto;
@@ -293,7 +292,6 @@
 <script>
   const params         = new URLSearchParams(window.location.search);
   const INSTITUTION_ID = params.get('institution_id') || null;
-  const MEMBER_ID      = params.get('member_id')      || null;
 
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -301,6 +299,8 @@
   let allEvents    = [];
   let readSet      = new Set();
   let activeFilter = 'all';
+
+  const STORAGE_KEY = `ab_reads_${INSTITUTION_ID}`;
 
   const pillMap = {
     'high':      { label: 'High severity',   cls: 'sev-high'  },
@@ -310,6 +310,21 @@
     'risk-down': { label: 'Risk reduced',     cls: 'risk-down' },
   };
 
+  function loadReadSet() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch(e) {
+      return new Set();
+    }
+  }
+
+  function saveReadSet() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...readSet]));
+    } catch(e) {}
+  }
+
   async function load() {
     if (!INSTITUTION_ID) {
       document.getElementById('feed').innerHTML =
@@ -317,6 +332,8 @@
       document.getElementById('strip-summary').textContent = 'Configuration error';
       return;
     }
+
+    readSet = loadReadSet();
 
     const { data: events, error } = await db
       .from('notification_events')
@@ -331,51 +348,24 @@
     }
 
     allEvents = events || [];
-
-    if (MEMBER_ID && allEvents.length > 0) {
-      const { data: reads } = await db
-        .from('notification_reads')
-        .select('event_id')
-        .eq('institution_id', INSTITUTION_ID)
-        .eq('member_id', MEMBER_ID)
-        .in('event_id', allEvents.map(e => e.id));
-
-      readSet = new Set((reads || []).map(r => r.event_id));
-    }
-
     render();
   }
 
-  async function markRead(eventId, actionUrl) {
+  function markRead(eventId, actionUrl) {
     if (!readSet.has(eventId)) {
       readSet.add(eventId);
+      saveReadSet();
       render();
-      if (MEMBER_ID && INSTITUTION_ID) {
-        await db.from('notification_reads').upsert({
-          institution_id: INSTITUTION_ID,
-          event_id:       eventId,
-          member_id:      MEMBER_ID,
-        }, { onConflict: 'institution_id,event_id,member_id' });
-      }
     }
     if (actionUrl) window.open(actionUrl, '_blank', 'noopener');
   }
 
-  async function markAllRead() {
+  function markAllRead() {
     const unread = allEvents.filter(e => !readSet.has(e.id));
     if (!unread.length) return;
     unread.forEach(e => readSet.add(e.id));
+    saveReadSet();
     render();
-    if (MEMBER_ID && INSTITUTION_ID) {
-      await db.from('notification_reads').upsert(
-        unread.map(e => ({
-          institution_id: INSTITUTION_ID,
-          event_id:       e.id,
-          member_id:      MEMBER_ID,
-        })),
-        { onConflict: 'institution_id,event_id,member_id' }
-      );
-    }
   }
 
   function setFilter(f, btn) {
