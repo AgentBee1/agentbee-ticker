@@ -339,7 +339,8 @@
       .from('notification_events')
       .select('*')
       .eq('institution_id', INSTITUTION_ID)
-      .order('created_at', { ascending: false });
+      .lte('publish_at', new Date().toISOString())
+      .order('publish_at', { ascending: false });
 
     if (error) {
       document.getElementById('feed').innerHTML =
@@ -402,7 +403,7 @@
     feed.innerHTML = filtered.map(e => {
       const isRead = readSet.has(e.id);
       const pill   = e.severity ? pillMap[e.severity] : null;
-      const when   = relativeTime(e.created_at);
+      const when   = relativeTime(e.publish_at || e.created_at);
       const url    = e.action_url ? `'${e.action_url}'` : 'null';
 
       return `<div
