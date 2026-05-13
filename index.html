@@ -411,12 +411,14 @@
       const when   = relativeTime(e.publish_at || e.created_at);
       const url    = e.action_url ? `'${e.action_url}'` : 'null';
 
-      const actionHtml = e.event_type === 'review'
-        ? `<span class="action-link static" aria-hidden="true">See Student Reviews section</span>`
-        : `<span class="action-link" aria-hidden="true">
-            ${e.action_label || 'View'}
-            <i class="ti ti-chevron-right" style="font-size:12px;vertical-align:-1px"></i>
-          </span>`;
+     const actionHtml = e.event_type === 'review'
+  ? `<span class="action-link static" aria-hidden="true">See Student Reviews section</span>`
+  : e.event_type === 'agent'
+  ? `<span class="action-link static" aria-hidden="true">See Your Agents section</span>`
+  : `<span class="action-link" aria-hidden="true">
+      ${e.action_label || 'View'}
+      <i class="ti ti-chevron-right" style="font-size:12px;vertical-align:-1px"></i>
+    </span>`;
 
       return `<div
           class="event-row${isRead ? '' : ' unread'}"
