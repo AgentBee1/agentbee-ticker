@@ -196,12 +196,17 @@
 
     .action-link {
       font-size: 12px;
+      font-weight: 600;
       color: var(--text-info);
       white-space: nowrap;
       margin-left: auto;
       flex-shrink: 0;
       padding-left: 8px;
       align-self: center;
+    }
+    .action-link.static {
+      color: var(--text-tertiary);
+      cursor: default;
     }
     .unread-dot {
       width: 7px; height: 7px;
@@ -406,6 +411,13 @@
       const when   = relativeTime(e.publish_at || e.created_at);
       const url    = e.action_url ? `'${e.action_url}'` : 'null';
 
+      const actionHtml = e.event_type === 'review'
+        ? `<span class="action-link static" aria-hidden="true">See Student Reviews section</span>`
+        : `<span class="action-link" aria-hidden="true">
+            ${e.action_label || 'View'}
+            <i class="ti ti-chevron-right" style="font-size:12px;vertical-align:-1px"></i>
+          </span>`;
+
       return `<div
           class="event-row${isRead ? '' : ' unread'}"
           role="button" tabindex="0"
@@ -424,10 +436,7 @@
               ${pill ? `<span class="pill ${pill.cls}">${pill.label}</span>` : ''}
             </div>
           </div>
-          <span class="action-link" aria-hidden="true">
-            ${e.action_label || 'View'}
-            <i class="ti ti-chevron-right" style="font-size:12px;vertical-align:-1px"></i>
-          </span>
+          ${actionHtml}
           ${isRead
             ? '<div class="no-dot"></div>'
             : '<div class="unread-dot" aria-label="unread"></div>'}
