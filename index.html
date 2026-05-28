@@ -340,10 +340,11 @@
 
     readSet = loadReadSet();
 
-    const { data: events, error } = await db
+   const { data: events, error } = await db
       .from('notification_events')
       .select('*')
       .eq('institution_id', INSTITUTION_ID)
+      .eq('is_visible', true)
       .lte('publish_at', new Date().toISOString())
       .order('publish_at', { ascending: false });
 
