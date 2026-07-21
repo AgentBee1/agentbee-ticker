@@ -184,12 +184,14 @@
     .sev-high  { background: #FCEBEB; color: #A32D2D; }
     .sev-med   { background: #FAEEDA; color: #633806; }
     .sev-low   { background: #EAF3DE; color: #27500A; }
+.sev-info  { background: #EEEDFE; color: #3C3489; }
     .risk-up   { background: #FCEBEB; color: #A32D2D; }
     .risk-down { background: #EAF3DE; color: #27500A; }
     @media (prefers-color-scheme: dark) {
       .sev-high  { background: #501313; color: #F09595; }
       .sev-med   { background: #412402; color: #FAC775; }
       .sev-low   { background: #173404; color: #C0DD97; }
+.sev-info  { background: #26215C; color: #CECBF6; }
       .risk-up   { background: #501313; color: #F09595; }
       .risk-down { background: #173404; color: #C0DD97; }
     }
@@ -308,12 +310,13 @@
   const STORAGE_KEY = `ab_reads_${INSTITUTION_ID}`;
 
   const pillMap = {
-    'high':      { label: 'High severity',   cls: 'sev-high'  },
-    'med':       { label: 'Medium severity',  cls: 'sev-med'   },
-    'low':       { label: 'Low severity',     cls: 'sev-low'   },
-    'risk-up':   { label: 'Increased risk',   cls: 'risk-up'   },
-    'risk-down': { label: 'Risk reduced',     cls: 'risk-down' },
-  };
+  'high':      { label: 'High severity',   cls: 'sev-high'  },
+  'med':       { label: 'Medium severity',  cls: 'sev-med'   },
+  'low':       { label: 'Low severity',     cls: 'sev-low'   },
+  'info':      { label: 'Informational',    cls: 'sev-info'  },
+  'risk-up':   { label: 'Increased risk',   cls: 'risk-up'   },
+  'risk-down': { label: 'Risk reduced',     cls: 'risk-down' },
+};
 
   function loadReadSet() {
     try {
