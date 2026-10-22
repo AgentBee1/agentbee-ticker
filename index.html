@@ -286,14 +286,11 @@
 
   <div class="expiry-note" id="expiry-note">
     <i class="ti ti-info-circle" aria-hidden="true"></i>
-    Unread items kept indefinitely &middot; Read items expire after 90 days
+    Showing the last 45 days &middot; The 2 latest resources are always shown
   </div>
 
   <div class="footer">
     <span class="footer-note" id="footer-note">Showing all updates</span>
-    <a class="btn-text" href="https://agentbee.com" target="_blank" rel="noopener">
-      View full history <i class="ti ti-external-link" style="font-size:11px;vertical-align:-1px"></i>
-    </a>
   </div>
 
 </div>
@@ -310,6 +307,9 @@
   let activeFilter = 'all';
 
   const STORAGE_KEY = `ab_reads_${INSTITUTION_ID}`;
+
+  const WINDOW_DAYS        = 45; // how far back alerts are shown
+  const PINNED_INFORMATION = 2;  // latest Knowledge Base / CoP items always shown
 
   const pillMap = {
   'high':      { label: 'High severity',   cls: 'sev-high'  },
@@ -345,13 +345,30 @@
 
     readSet = loadReadSet();
 
-   const { data: events, error } = await db
+    // Only recent items are shown, so unclicked alerts don't pile up.
+    // Knowledge Base / Community of Practice items are posted less often,
+    // so the latest few are always kept regardless of age.
+    const now   = new Date();
+    const since = new Date(now.getTime() - WINDOW_DAYS * 86400000);
+
+    const base = () => db
       .from('notification_events')
       .select('*')
       .eq('institution_id', INSTITUTION_ID)
       .eq('is_visible', true)
-      .lte('publish_at', new Date().toISOString())
+      .lte('publish_at', now.toISOString())
       .order('publish_at', { ascending: false });
+
+    const [recentRes, infoRes] = await Promise.all([
+      base().gte('publish_at', since.toISOString()),
+      base().eq('event_type', 'information').limit(PINNED_INFORMATION),
+    ]);
+    const error = recentRes.error || infoRes.error;
+
+    const byId = new Map();
+    [...(recentRes.data || []), ...(infoRes.data || [])].forEach(e => byId.set(e.id, e));
+    const events = [...byId.values()].sort((a, b) =>
+      String(b.publish_at || b.created_at).localeCompare(String(a.publish_at || a.created_at)));
 
     if (error) {
       document.getElementById('feed').innerHTML =
@@ -393,8 +410,6 @@
       information: 'Showing information and resources',
     };
     document.getElementById('footer-note').textContent = labels[f] || '';
-    document.getElementById('expiry-note').style.display =
-      f === 'information' ? 'none' : 'block';
     render();
   }
 
@@ -406,7 +421,9 @@
     const feed = document.getElementById('feed');
 
     if (!filtered.length) {
-      feed.innerHTML = '<div class="state-msg">No updates in this category.</div>';
+      feed.innerHTML = activeFilter === 'all'
+        ? `<div class="state-msg">No new updates in the last ${WINDOW_DAYS} days.</div>`
+        : `<div class="state-msg">No updates in this category in the last ${WINDOW_DAYS} days.</div>`;
       updateStrip();
       return;
     }
